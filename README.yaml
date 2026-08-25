@@ -5,13 +5,13 @@
 #
 
 # Name of this project
-name : Terraform Azure Module Template
+name : Terraform Azure API Management Module
 
 # License of this project
 license: "APACHE"
 
 # Canonical GitHub repo
-github_repo: terraform-az-modules/terraform-module-template
+github_repo: terraform-az-modules/terraform-azurerm-api-management
 
 # Badges to display
 badges:
@@ -32,18 +32,29 @@ prerequesties:
     version: ">= 1.6.6"
 
 providers:
-  - name: azure
-    url: https://azure.microsoft.com/
+  - name: azurerm
+    url: https://registry.terraform.io/providers/hashicorp/azurerm/latest
     version: ">= 3.116.0"
 
 #  description of this project
 description: |-
-  Terraform Azure Module Template to create new modules using this as baseline
+  Terraform module to provision an Azure API Management service with optional
+  diagnostics, Application Insights logging, virtual network integration, and
+  service policy support.
 
 # How to use this project
 # How to use this project
 usage: |-
-  Here are some examples of how you can use this module in your inventory structure:
   ```hcl
-    locals {}
-    ```
+  module "api_management" {
+    source              = "terraform-az-modules/api-management/azurerm"
+    version             = "x.y.z"
+    name                = "core"
+    environment         = "dev"
+    location            = "centralus"
+    resource_group_name = "rg-core-dev-centralus"
+    publisher_name      = "Example"
+    publisher_email     = "example@contoso.com"
+    sku_name            = "Developer_1"
+  }
+  ```
