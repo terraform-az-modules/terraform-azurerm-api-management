@@ -4,7 +4,7 @@
 module "labels" {
   source          = "terraform-az-modules/tags/azurerm"
   version         = "1.0.2"
-  name            = local.name
+  name            = var.custom_name == null ? var.name : var.custom_name
   location        = var.location
   environment     = var.environment
   managedby       = var.managedby
@@ -12,11 +12,6 @@ module "labels" {
   repository      = var.repository
   deployment_mode = var.deployment_mode
   extra_tags      = var.extra_tags
-}
-
-locals {
-  app_insights_id                  = coalesce(var.app_insights_id, var.application_insights_id)
-  app_insights_instrumentation_key = coalesce(var.app_insights_instrumentation_key, var.application_insights_instrumentation_key)
 }
 
 resource "azurerm_api_management" "main" {
@@ -56,8 +51,9 @@ resource "azurerm_api_management_logger" "main" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "main" {
-  count = var.enable && var.enable_diagnostic && (var.log_analytics_workspace_id != null || var.storage_account_id != null) ? 1 : 0
-  name  = var.resource_position_prefix ? format("diag-%s", local.name) : format("%s-diag", local.name)
+  count = var.enable && var.enable_diagnostic ? 1 : 0
+
+  name = var.resource_position_prefix ? format("diag-%s", local.name) : format("%s-diag", local.name)
 
   target_resource_id         = azurerm_api_management.main[0].id
   log_analytics_workspace_id = var.log_analytics_workspace_id
@@ -79,7 +75,7 @@ resource "azurerm_monitor_diagnostic_setting" "main" {
 }
 
 resource "azurerm_api_management_policy" "main" {
-  count              = var.enable && var.policy_xml != null ? 1 : 0
-  api_management_id  = azurerm_api_management.main[0].id
-  xml_content        = var.policy_xml
+  count             = var.enable && var.policy_xml != null ? 1 : 0
+  api_management_id = azurerm_api_management.main[0].id
+  xml_content       = var.policy_xml
 }

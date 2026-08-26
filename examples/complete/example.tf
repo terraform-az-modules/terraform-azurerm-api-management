@@ -25,6 +25,60 @@ module "vnet" {
   address_spaces      = ["10.40.0.0/16"]
 }
 
+resource "azurerm_network_security_group" "apim" {
+  name                = "nsg-apim"
+  location            = module.resource_group.resource_group_location
+  resource_group_name = module.resource_group.resource_group_name
+
+  security_rule {
+    name                       = "AllowApiManagement"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3443"
+    source_address_prefix      = "ApiManagement"
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                       = "AllowAzureLoadBalancer"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "6390"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                       = "AllowApiManagementClients"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["80", "443"]
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                       = "AllowAzureTrafficManager"
+    priority                   = 130
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "AzureTrafficManager"
+    destination_address_prefix = "VirtualNetwork"
+  }
+}
+
 module "subnet" {
   source               = "terraform-az-modules/subnet/azurerm"
   version              = "1.0.3"
@@ -35,8 +89,10 @@ module "subnet" {
   virtual_network_name = module.vnet.vnet_name
   subnets = [
     {
-      name            = "apim"
-      subnet_prefixes = ["10.40.1.0/24"]
+      name                      = "apim"
+      subnet_prefixes           = ["10.40.1.0/24"]
+      nsg_association           = true
+      network_security_group_id = azurerm_network_security_group.apim.id
     }
   ]
 }
@@ -53,15 +109,16 @@ module "log_analytics" {
 }
 
 module "application_insights" {
-  source              = "terraform-az-modules/application-insights/azurerm"
-  version             = "1.0.2"
-  name                = "core"
-  environment         = "dev"
-  location            = module.resource_group.resource_group_location
-  label_order         = ["name", "environment", "location"]
-  resource_group_name = module.resource_group.resource_group_name
-  workspace_id        = module.log_analytics.workspace_id
-  web_test_enable     = false
+  source                     = "terraform-az-modules/application-insights/azurerm"
+  version                    = "1.0.2"
+  name                       = "core"
+  environment                = "dev"
+  location                   = module.resource_group.resource_group_location
+  label_order                = ["name", "environment", "location"]
+  resource_group_name        = module.resource_group.resource_group_name
+  workspace_id               = module.log_analytics.workspace_id
+  log_analytics_workspace_id = module.log_analytics.workspace_id
+  web_test_enable            = false
 }
 
 resource "azurerm_public_ip" "apim" {
@@ -70,6 +127,7 @@ resource "azurerm_public_ip" "apim" {
   resource_group_name = module.resource_group.resource_group_name
   allocation_method   = "Static"
   sku                 = "Standard"
+  domain_name_label   = "apim-core-dev-cus"
 }
 
 module "api_management" {
@@ -93,20 +151,17 @@ module "api_management" {
   policy_xml                       = <<XML
 <policies>
   <inbound>
-    <base />
     <set-header name="X-Example-Module" exists-action="override">
       <value>api-management</value>
     </set-header>
   </inbound>
   <backend>
-    <base />
+    <forward-request />
   </backend>
-  <outbound>
-    <base />
-  </outbound>
-  <on-error>
-    <base />
-  </on-error>
+  <outbound />
+  <on-error />
 </policies>
 XML
+
+  depends_on = [module.subnet]
 }
