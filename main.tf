@@ -301,7 +301,7 @@ resource "azurerm_application_insights" "main" {
   application_type    = var.application_insights_type
   sampling_percentage = var.application_insights_sampling_percentage
   retention_in_days   = var.retention_in_days
-  disable_ip_masking  = var.disable_ip_masking
+  ip_masking_enabled  = var.ip_masking_enabled
   workspace_id        = var.log_analytics_workspace_id
   tags                = module.labels.tags
 }
@@ -611,7 +611,7 @@ resource "azurerm_private_endpoint" "pep" {
 
   private_dns_zone_group {
     name                 = var.resource_position_prefix ? format("apim-dns-zone-group-%s", local.name) : format("%s-apim-dns-zone-group", local.name)
-    private_dns_zone_ids = [var.private_dns_zone_ids]
+    private_dns_zone_ids = var.private_dns_zone_ids
   }
 
   lifecycle {

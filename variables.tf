@@ -443,10 +443,10 @@ variable "retention_in_days" {
   }
 }
 
-variable "disable_ip_masking" {
+variable "ip_masking_enabled" {
   type        = bool
-  default     = false
-  description = "Disable IP masking for Application Insights."
+  default     = true
+  description = "Enable IP masking for Application Insights."
 }
 
 ##-----------------------------------------------------------------------------
@@ -951,7 +951,7 @@ variable "private_endpoint_subnet_id" {
 }
 
 variable "private_dns_zone_ids" {
-  type        = string
+  type        = list(string)
   default     = null
-  description = "The ID of the private DNS zone."
+  description = "List of private DNS zone IDs to associate with the APIM private endpoint."
 }
